@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Câmera Pontilhada</title>
+<style>
+  body {
+    background: black;
+    text-align: center;
+    font-family: Arial;
+    color: white;
+  }
+  video, canvas {
+    width: 90%;
+    max-width: 400px;
+    margin-top: 10px;
+  }
+  button {
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 50px;
+    border: none;
+    font-size: 16px;
+  }
+</style>
+</head>
+<body>
+
+<h2>Câmera Preto e Branco Pontilhada</h2>
+
+<video id="video" autoplay></video>
+<canvas id="canvas"></canvas>
+<br>
+<button onclick="tirarFoto()">Tirar Foto</button>
+
+<script>
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+// Ativa câmera
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => {
+    video.srcObject = stream;
+});
+
+// Função para aplicar dithering simples
+function dithering(imageData) {
+    let data = imageData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+        let avg = (data[i] + data[i+1] + data[i+2]) / 3;
+        let bw = avg > 128 ? 255 : 0;
+
+        data[i] = bw;
+        data[i+1] = bw;
+        data[i+2] = bw;
+    }
+
+    return imageData;
+}
+
+function tirarFoto() {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    ctx.drawImage(video, 0, 0);
+
+    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    imageData = dithering(imageData);
+    ctx.putImageData(imageData, 0, 0);
+}
+</script>
+
+</body>
+</html>
