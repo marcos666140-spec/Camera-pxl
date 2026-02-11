@@ -1,75 +1,128 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Câmera Pontilhada</title>
+
 <style>
-  body {
-    background: black;
-    text-align: center;
-    font-family: Arial;
-    color: white;
-  }
-  video, canvas {
-    width: 90%;
-    max-width: 400px;
-    margin-top: 10px;
-  }
-  button {
-    margin: 10px;
-    padding: 10px 20px;
-    border-radius: 50px;
-    border: none;
-    font-size: 16px;
-  }
+body {
+  margin: 0;
+  background: black;
+  color: white;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+video, canvas {
+  width: 100%;
+  max-width: 500px;
+  margin-top: 10px;
+  border-radius: 12px;
+}
+
+.controls {
+  margin: 15px;
+}
+
+button {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: none;
+  margin: 10px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+#snap {
+  background: white;
+}
+
+#switch {
+  background: gray;
+  color: white;
+}
 </style>
 </head>
+
 <body>
 
-<h2>Câmera Preto e Branco Pontilhada</h2>
+<h2>Câmera Pontilhada</h2>
 
-<video id="video" autoplay></video>
+<video id="video" autoplay playsinline></video>
 <canvas id="canvas"></canvas>
-<br>
-<button onclick="tirarFoto()">Tirar Foto</button>
+
+<div class="controls">
+  <button id="snap">📸</button>
+  <button id="switch">🔄</button>
+</div>
 
 <script>
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-// Ativa câmera
-navigator.mediaDevices.getUserMedia({ video: true })
-.then(stream => {
+let currentStream;
+let useBackCamera = true;
+
+// Inicia câmera
+async function iniciarCamera() {
+  if (currentStream) {
+    currentStream.getTracks().forEach(track => track.stop());
+  }
+
+  const constraints = {
+    video: {
+      facingMode: useBackCamera ? { exact: "environment" } : "user"
+    }
+  };
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    currentStream = stream;
     video.srcObject = stream;
+  } catch (err) {
+    alert("Erro ao acessar câmera: " + err.message);
+  }
+}
+
+// Efeito pontilhado simples
+function dithering(imageData) {
+  let data = imageData.data;
+
+  for (let i = 0; i < data.length; i += 4) {
+    let avg = (data[i] + data[i+1] + data[i+2]) / 3;
+    let bw = avg > 128 ? 255 : 0;
+
+    data[i] = bw;
+    data[i+1] = bw;
+    data[i+2] = bw;
+  }
+
+  return imageData;
+}
+
+// Tirar foto
+document.getElementById("snap").addEventListener("click", () => {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  ctx.drawImage(video, 0, 0);
+
+  let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  imageData = dithering(imageData);
+  ctx.putImageData(imageData, 0, 0);
 });
 
-// Função para aplicar dithering simples
-function dithering(imageData) {
-    let data = imageData.data;
+// Alternar câmera
+document.getElementById("switch").addEventListener("click", () => {
+  useBackCamera = !useBackCamera;
+  iniciarCamera();
+});
 
-    for (let i = 0; i < data.length; i += 4) {
-        let avg = (data[i] + data[i+1] + data[i+2]) / 3;
-        let bw = avg > 128 ? 255 : 0;
-
-        data[i] = bw;
-        data[i+1] = bw;
-        data[i+2] = bw;
-    }
-
-    return imageData;
-}
-
-function tirarFoto() {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    ctx.drawImage(video, 0, 0);
-
-    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    imageData = dithering(imageData);
-    ctx.putImageData(imageData, 0, 0);
-}
+// Inicia ao carregar
+iniciarCamera();
 </script>
 
 </body>
